@@ -69,6 +69,36 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 curl http://localhost:8000/health
 ```
 
+## Реальный запуск на macOS
+
+Для полноценного запуска на macOS установите Docker Desktop, откройте его и
+дождитесь, пока запустится Docker Engine. После этого проверьте доступность Docker:
+
+```bash
+docker --version
+docker compose version
+```
+
+Затем из каталога проекта выполните:
+
+```bash
+docker compose up -d db
+python scripts/init_db.py
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Быстрая проверка без Docker
+
+Без Docker, PostgreSQL и pgvector нельзя проверить полноценный ingestion в базу и
+semantic retrieval. Но можно проверить, что код импортируется, тесты проходят, а
+FastAPI-приложение создается:
+
+```bash
+pytest
+python -m compileall app scripts
+python -c "from app.main import app; print(app.title)"
+```
+
 ## Загрузка первого документа
 
 Для локального файла поместите разрешенно полученный UTF-8 документ, например,
@@ -100,6 +130,30 @@ curl -X POST http://localhost:8000/ingest/file \
 
 В продуктивной базе вместо тестового текста загружайте полный документ из
 проверяемого источника с корректной датой редакции.
+
+## Первый тестовый документ
+
+В репозитории есть небольшой тестовый документ
+`data/raw/fitness_contract_sample.md`. Это искусственный пример правил
+фитнес-клуба, а не копия реального договора.
+
+После запуска PostgreSQL/pgvector и выполнения `python scripts/init_db.py`
+загрузите sample:
+
+```bash
+python scripts/ingest_file.py data/raw/fitness_contract_sample.md \
+  --title "Тестовые правила фитнес-клуба" \
+  --source-url "local-sample" \
+  --doc-type "contract" \
+  --jurisdiction "RF" \
+  --version-date "2026-05-27"
+```
+
+Задайте первый вопрос:
+
+```bash
+python scripts/ask_cli.py "Может ли фитнес-клуб запретить мне громко кричать во время упражнения?"
+```
 
 ## Задать вопрос
 
@@ -179,6 +233,7 @@ tests/                    unit-тесты
 
 ```bash
 pytest
+python -m compileall app scripts
 python -c "from app.main import app; print(app.title)"
 docker compose config
 ```
@@ -186,6 +241,17 @@ docker compose config
 Тесты не вызывают OpenAI API и не требуют запущенного PostgreSQL: retrieval
 проверяется детерминированным mock embedding provider. Для end-to-end проверки
 нужны PostgreSQL/pgvector и ключ OpenAI.
+
+## Публикация на GitHub
+
+Если `remote origin` еще не настроен, создайте пустой репозиторий на GitHub и
+выполните:
+
+```bash
+git remote add origin <GITHUB_REPO_URL>
+git branch -M main
+git push -u origin main
+```
 
 ## Справочные ссылки OpenAI
 
